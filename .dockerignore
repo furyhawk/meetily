@@ -1,0 +1,40 @@
+# ── Git ───────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Rust build artifacts ─────────────────────────────
+target/
+frontend/src-tauri/target/
+
+# ── Node / frontend build artifacts ──────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+node_modules/
+
+# ── Backend (legacy archive – not needed for Tauri build)
+backend/
+
+# ── Local development / temporary ────────────────────
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+dist/
+
+# ── IDE / editor ─────────────────────────────────────
+.idea/
+.vscode/
+*.code-workspace
+
+# ── Logs ──────────────────────────────────────────────
+frontend/src-tauri/logs/
+*.log
+
+# ── Misc ─────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.md
