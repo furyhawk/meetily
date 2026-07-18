@@ -18,15 +18,15 @@
 #   podman rm "$id"
 #
 # Build arguments:
-#   CUDA_VERSION                 – CUDA toolkit version          (default: 12.3.1)
-#   UBUNTU_VERSION               – Ubuntu base version           (default: 22.04)
+#   CUDA_VERSION                 – CUDA toolkit version          (default: 12.9.2)
+#   UBUNTU_VERSION               – Ubuntu base version           (default: 24.04)
 #   CUDA_ARCH                    – NVIDIA compute cap × 10       (default: 75)
 #   NODE_VERSION                 – Node.js major version         (default: 20)
 #   TAURI_SIGNING_PRIVATE_KEY    – Tauri signing key (optional)
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD – Tauri signing key password (optional)
 
-ARG CUDA_VERSION=12.3.1
-ARG UBUNTU_VERSION=22.04
+ARG CUDA_VERSION=12.9.2
+ARG UBUNTU_VERSION=24.04
 
 # ──────────────────────────────────────────────────────
 # Stage: builder – all build dependencies + source
@@ -83,7 +83,7 @@ RUN apt-get update && apt-get install -y \
 # ── Install NCCL (needed by llama-cpp-2 CUDA ggml) ───
 # The NVIDIA ML repository provides libnccl-dev for multi-GPU support.
 # After install, symlink into CUDA's lib directory so the linker finds it.
-RUN curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
+RUN curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
         -o /tmp/cuda-keyring.deb && \
     dpkg -i /tmp/cuda-keyring.deb && \
     apt-get update && \
