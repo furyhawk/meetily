@@ -151,8 +151,10 @@ RUN cd frontend && \
     npx tauri build --bundles deb -- --features cuda
 
 # ── Copy built bundles to a stable location ──────────
+# NOTE: This is a Cargo workspace — all build artifacts go under
+# the workspace root /app/target/, NOT under frontend/src-tauri/target/.
 RUN mkdir -p /bundle && \
-    cp -r /app/frontend/src-tauri/target/release/bundle/* /bundle/ 2>/dev/null; \
+    cp -r /app/target/release/bundle/* /bundle/ 2>/dev/null; \
     ls -la /bundle/
 
 # ──────────────────────────────────────────────────────

@@ -95,7 +95,7 @@ if podman cp "$CONTAINER_ID":/bundle/. "$OUTPUT_DIR/" 2>/dev/null; then
     ok "Extracted from /bundle/"
 else
     warn "/bundle/ not found, trying target/release/bundle..."
-    if podman cp "$CONTAINER_ID":/app/frontend/src-tauri/target/release/bundle/. "$OUTPUT_DIR/" 2>/dev/null; then
+    if podman cp "$CONTAINER_ID":/app/target/release/bundle/. "$OUTPUT_DIR/" 2>/dev/null; then
         ok "Extracted from target/release/bundle/"
     else
         err "No bundles found in the image."
@@ -120,18 +120,16 @@ echo -e "${BLUE}  Extracted bundles${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 FOUND=0
+shopt -s nullglob
 for fmt in deb rpm AppImage; do
-    matches=("$OUTPUT_DIR"/*."$fmt" 2>/dev/null || true)
-    if [[ -f "${matches[0]}" ]]; then
-        for f in "${matches[@]}"; do
-            if [[ -f "$f" ]]; then
-                size=$(du -h "$f" | cut -f1)
-                echo -e "  ${GREEN}✔${NC} $(basename "$f")  (${size})"
-                FOUND=$((FOUND + 1))
-            fi
-        done
-    fi
+    for f in "$OUTPUT_DIR"/*."$fmt"; do
+        [[ -f "$f" ]] || continue
+        size=$(du -h "$f" | cut -f1)
+        echo -e "  ${GREEN}✔${NC} $(basename "$f")  (${size})"
+        FOUND=$((FOUND + 1))
+    done
 done
+shopt -u nullglob
 
 if [[ $FOUND -eq 0 ]]; then
     warn "No .deb, .rpm, or AppImage files found in output directory."

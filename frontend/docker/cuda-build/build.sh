@@ -224,7 +224,7 @@ trap 'podman rm -f "$CONTAINER_ID" &>/dev/null || true' EXIT
 podman cp "$CONTAINER_ID":/bundle/. "$OUTPUT_DIR/" 2>/dev/null || {
     warn "No bundles found in export stage; trying to locate target/release/bundle..."
     # Fallback: try the intermediate build output
-    podman cp "$CONTAINER_ID":/app/frontend/src-tauri/target/release/bundle/. "$OUTPUT_DIR/" 2>/dev/null || {
+    podman cp "$CONTAINER_ID":/app/target/release/bundle/. "$OUTPUT_DIR/" 2>/dev/null || {
         warn "Could not extract bundles automatically."
         warn "They may still be inside the image. Run the container interactively:"
         warn "  podman run --rm -it $TAG /bin/bash"
