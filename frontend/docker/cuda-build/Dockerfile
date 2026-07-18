@@ -148,7 +148,7 @@ ENV TAURI_SIGNING_PRIVATE_KEY=${TAURI_SIGNING_PRIVATE_KEY}
 ENV TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${TAURI_SIGNING_PRIVATE_KEY_PASSWORD}
 RUN cd frontend && \
     RUSTFLAGS="-L /usr/local/cuda/lib64 -l nccl" \
-    npx tauri build --bundles deb --bundles rpm -- --features cuda
+    npx tauri build --bundles deb -- --features cuda
 
 # ── Copy built bundles to a stable location ──────────
 RUN mkdir -p /bundle && \
