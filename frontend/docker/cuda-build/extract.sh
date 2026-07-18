@@ -119,22 +119,18 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}  Extracted bundles${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-FOUND=0
-shopt -s nullglob
-for fmt in deb rpm AppImage; do
-    for f in "$OUTPUT_DIR"/*."$fmt"; do
-        [[ -f "$f" ]] || continue
-        size=$(du -h "$f" | cut -f1)
-        echo -e "  ${GREEN}✔${NC} $(basename "$f")  (${size})"
-        FOUND=$((FOUND + 1))
-    done
-done
-shopt -u nullglob
+readarray -t BUNDLES < <(find "$OUTPUT_DIR" \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -type f 2>/dev/null || true)
+FOUND=${#BUNDLES[@]}
 
-if [[ $FOUND -eq 0 ]]; then
+if [[ $FOUND -gt 0 ]]; then
+    for bundle in "${BUNDLES[@]}"; do
+        size=$(du -h "$bundle" | cut -f1)
+        echo -e "  ${GREEN}✔${NC} $(basename "$bundle")  (${size})"
+    done
+else
     warn "No .deb, .rpm, or AppImage files found in output directory."
     warn "Contents of $OUTPUT_DIR:"
-    ls -lh "$OUTPUT_DIR/"
+    ls -lhR "$OUTPUT_DIR/" 2>/dev/null | head -30
 fi
 
 echo ""

@@ -253,13 +253,18 @@ podman rm -f "$CONTAINER_ID"
 trap - EXIT
 
 echo ""
-if ls "$OUTPUT_DIR"/*.AppImage "$OUTPUT_DIR"/*.deb &>/dev/null 2>&1; then
+# Find bundles recursively (podman cp preserves directory structure)
+readarray -t BUNDLES < <(find "$OUTPUT_DIR" \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -type f 2>/dev/null || true)
+if [[ ${#BUNDLES[@]} -gt 0 ]]; then
     ok "Build artifacts extracted to: $OUTPUT_DIR"
-    ls -lh "$OUTPUT_DIR"/*.AppImage "$OUTPUT_DIR"/*.deb 2>/dev/null || ls -lh "$OUTPUT_DIR"/
+    for bundle in "${BUNDLES[@]}"; do
+        size=$(du -h "$bundle" | cut -f1)
+        echo -e "  ${GREEN}✔${NC} $(basename "$bundle")  (${size})"
+    done
 else
     warn "Output directory: $OUTPUT_DIR"
-    ls -lh "$OUTPUT_DIR"/ 2>/dev/null || true
-    warn "(No AppImage/deb files found — the build may have failed or these formats weren't produced.)"
+    find "$OUTPUT_DIR" -type f 2>/dev/null | head -20 || true
+    warn "(No .deb/.rpm/AppImage files found — check the image contents manually.)"
 fi
 
 # ── Push image if requested ───────────────────────────
