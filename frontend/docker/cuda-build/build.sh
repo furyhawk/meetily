@@ -13,9 +13,13 @@
 #   - NVIDIA GPU with proper drivers on the host
 #
 # Usage:
-#   ./frontend/docker/cuda-build/build.sh              # Auto-detect compute capability
-#   ./frontend/docker/cuda-build/build.sh --arch 86    # Force compute capability 8.6
-#   ./frontend/docker/cuda-build/build.sh --help       # Show help
+#   ./frontend/docker/cuda-build/build.sh                        # Auto-detect compute capability
+#   ./frontend/docker/cuda-build/build.sh --arch 86              # Force compute capability 8.6
+#   ./frontend/docker/cuda-build/build.sh --signing-key "..."    # Enable signed updater artifacts
+#   ./frontend/docker/cuda-build/build.sh --help                 # Show help
+#
+# Signing keys can also be set via TAURI_SIGNING_PRIVATE_KEY and
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD environment variables.
 #
 # Output:
 #   Built bundles (AppImage, .deb, etc.) are placed in ./dist/
@@ -30,6 +34,9 @@ CUDA_ARCH=""
 NO_CACHE=""
 PUSH=false
 TAG="meetily-cuda-builder:latest"
+# Read signing keys from environment (can be overridden by CLI args)
+TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY:-}"
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
 
 # ── Colour output ─────────────────────────────────────
 RED='\033[0;31m'
@@ -56,6 +63,12 @@ Options:
   --no-cache     Disable Podman build cache.
   --tag NAME     Container image tag (default: meetily-cuda-builder:latest).
   --push         Push the built image (not the app) to a registry after build.
+  --signing-key KEY
+                 Tauri signing private key (base64). Can also be set via
+                 TAURI_SIGNING_PRIVATE_KEY environment variable.
+  --signing-key-password PASSWORD
+                 Tauri signing private key password. Can also be set via
+                 TAURI_SIGNING_PRIVATE_KEY_PASSWORD environment variable.
   --help         Show this help.
 
 Examples:
@@ -87,6 +100,8 @@ while [[ $# -gt 0 ]]; do
         --no-cache) NO_CACHE="--no-cache"; shift ;;
         --tag)     TAG="$2"; shift 2 ;;
         --push)    PUSH=true; shift ;;
+        --signing-key)           TAURI_SIGNING_PRIVATE_KEY="$2"; shift 2 ;;
+        --signing-key-password)  TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$2"; shift 2 ;;
         --help)    usage ;;
         *)         err "Unknown option: $1"; usage ;;
     esac
@@ -145,6 +160,14 @@ if [[ -n "$NO_CACHE" ]]; then
     BUILD_ARGS+=("$NO_CACHE")
 fi
 
+# Pass signing keys to the container (optional — enables signed updater artifacts)
+if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+    BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY=$TAURI_SIGNING_PRIVATE_KEY")
+fi
+if [[ -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]]; then
+    BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
+fi
+
 # We run the build from the project root so the full source is in context
 # Use a .dockerignore to exclude unnecessary files
 BUILD_CONTEXT="$PROJECT_ROOT"
@@ -155,6 +178,11 @@ echo -e "${BLUE}  podman build${NC}"
 echo -e "${BLUE}  Context:  $BUILD_CONTEXT${NC}"
 echo -e "${BLUE}  Tag:      $TAG${NC}"
 echo -e "${BLUE}  Arch:     $CUDA_ARCH${NC}"
+if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+    echo -e "${BLUE}  Signing:  enabled${NC}"
+else
+    echo -e "${YELLOW}  Signing:  disabled (no private key)${NC}"
+fi
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 

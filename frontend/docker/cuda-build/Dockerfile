@@ -18,10 +18,12 @@
 #   podman rm "$id"
 #
 # Build arguments:
-#   CUDA_VERSION   – CUDA toolkit version          (default: 12.3.1)
-#   UBUNTU_VERSION – Ubuntu base version           (default: 22.04)
-#   CUDA_ARCH      – NVIDIA compute cap × 10       (default: 75)
-#   NODE_VERSION   – Node.js major version         (default: 20)
+#   CUDA_VERSION                 – CUDA toolkit version          (default: 12.3.1)
+#   UBUNTU_VERSION               – Ubuntu base version           (default: 22.04)
+#   CUDA_ARCH                    – NVIDIA compute cap × 10       (default: 75)
+#   NODE_VERSION                 – Node.js major version         (default: 20)
+#   TAURI_SIGNING_PRIVATE_KEY    – Tauri signing key (optional)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD – Tauri signing key password (optional)
 
 ARG CUDA_VERSION=12.3.1
 ARG UBUNTU_VERSION=22.04
@@ -34,6 +36,8 @@ FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS buil
 ARG DEBIAN_FRONTEND=noninteractive
 ARG CUDA_ARCH=89
 ARG NODE_VERSION=20
+ARG TAURI_SIGNING_PRIVATE_KEY=""
+ARG TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
 
 # ── Install system build dependencies ─────────────────
 RUN apt-get update && apt-get install -y \
@@ -138,6 +142,10 @@ RUN mkdir -p /app/frontend/src-tauri/binaries && \
 # ── Build Tauri app with CUDA ─────────────────────────
 # whisper-rs with CUDA uses the same ggml code as llama-helper.
 # AppImage is excluded because linuxdeploy (FUSE) doesn't work in containers.
+# Signing key is optional — pass via --build-arg to enable signed updater artifacts.
+# When no key is provided, the ARG defaults to empty and Tauri skips signing.
+ENV TAURI_SIGNING_PRIVATE_KEY=${TAURI_SIGNING_PRIVATE_KEY}
+ENV TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${TAURI_SIGNING_PRIVATE_KEY_PASSWORD}
 RUN cd frontend && \
     RUSTFLAGS="-L /usr/local/cuda/lib64 -l nccl" \
     npx tauri build --bundles deb --bundles rpm -- --features cuda
