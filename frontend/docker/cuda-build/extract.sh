@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # ── Defaults ──────────────────────────────────────────
-TAG="meetily-cuda-builder:latest"
+TAG="localhost/meetily-cuda-builder:latest"
 OUTPUT_DIR="$PROJECT_ROOT/dist"
 
 # ── Colour output ─────────────────────────────────────
@@ -44,13 +44,13 @@ Usage: $(basename "$0") [OPTIONS]
 Extract built bundles from a Meetily CUDA builder container image.
 
 Options:
-  --tag NAME    Container image tag (default: meetily-cuda-builder:latest).
+  --tag NAME    Container image tag (default: localhost/meetily-cuda-builder:latest).
   --out DIR     Output directory (default: ./dist/).
   --help        Show this help.
 
 Examples:
   $(basename "$0")
-  $(basename "$0") --tag meetily-cuda-builder:latest
+  $(basename "$0") --tag localhost/meetily-cuda-builder:latest
   $(basename "$0") --out ./artifacts
 EOF
     exit 0

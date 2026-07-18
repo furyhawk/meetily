@@ -33,9 +33,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # ── Defaults ──────────────────────────────────────────
 CUDA_ARCH=""
+FORCE_REBUILD=false
 NO_CACHE=""
 PUSH=false
-TAG="meetily-cuda-builder:latest"
+TAG="localhost/meetily-cuda-builder:latest"
 TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY:-}"
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
 
@@ -81,9 +82,10 @@ Build Meetily using a Podman container with CUDA GPU acceleration.
 Options:
   --arch NUM     NVIDIA compute capability × 10 (e.g. 75 for compute 7.5)
                  Auto-detected from nvidia-smi if omitted.
-  --no-cache     Disable Podman build cache.
-  --tag NAME     Container image tag (default: meetily-cuda-builder:latest).
-  --push         Push the built image (not the app) to a registry after build.
+  --no-cache        Disable Podman build cache.
+  --force-rebuild   Force a full rebuild even if the image already exists.
+  --tag NAME        Container image tag (default: localhost/meetily-cuda-builder:latest).
+  --push            Push the built image (not the app) to a registry after build.
   --signing-key KEY
                  Tauri signing private key (base64). Can also be set via
                  TAURI_SIGNING_PRIVATE_KEY environment variable.
@@ -117,9 +119,10 @@ EOF
 # ── Parse args ────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --arch)    CUDA_ARCH="$2"; shift 2 ;;
-        --no-cache) NO_CACHE="--no-cache"; shift ;;
-        --tag)     TAG="$2"; shift 2 ;;
+        --arch)          CUDA_ARCH="$2"; shift 2 ;;
+        --no-cache)      NO_CACHE="--no-cache"; shift ;;
+        --force-rebuild) FORCE_REBUILD=true; shift ;;
+        --tag)           TAG="$2"; shift 2 ;;
         --push)    PUSH=true; shift ;;
         --signing-key)           TAURI_SIGNING_PRIVATE_KEY="$2"; shift 2 ;;
         --signing-key-password)  TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$2"; shift 2 ;;
@@ -169,48 +172,63 @@ OUTPUT_DIR="$PROJECT_ROOT/dist"
 mkdir -p "$OUTPUT_DIR"
 info "Output directory: $OUTPUT_DIR"
 
-# ── Build the container image ─────────────────────────
-info "Building container image ($TAG)${NO_CACHE:+, no-cache}..."
-BUILD_ARGS=(
-    --build-arg "CUDA_ARCH=$CUDA_ARCH"
-    -t "$TAG"
-    -f "$SCRIPT_DIR/Dockerfile"
-)
-
-if [[ -n "$NO_CACHE" ]]; then
-    BUILD_ARGS+=("$NO_CACHE")
+# ── Build or reuse the container image ────────────────
+IMAGE_EXISTS=false
+if podman image exists "$TAG" 2>/dev/null; then
+    IMAGE_EXISTS=true
 fi
 
-# Pass signing keys to the container (optional — enables signed updater artifacts)
-if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
-    BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY=$TAURI_SIGNING_PRIVATE_KEY")
-fi
-if [[ -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]]; then
-    BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
-fi
-
-# We run the build from the project root so the full source is in context
-# Use a .dockerignore to exclude unnecessary files
-BUILD_CONTEXT="$PROJECT_ROOT"
-
-echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  podman build${NC}"
-echo -e "${BLUE}  Context:  $BUILD_CONTEXT${NC}"
-echo -e "${BLUE}  Tag:      $TAG${NC}"
-echo -e "${BLUE}  Arch:     $CUDA_ARCH${NC}"
-if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
-    echo -e "${BLUE}  Signing:  enabled${NC}"
+if [[ "$FORCE_REBUILD" == false && "$IMAGE_EXISTS" == true ]]; then
+    info "Using existing image: $TAG"
+    info "Run with --force-rebuild to rebuild from scratch."
 else
-    echo -e "${YELLOW}  Signing:  disabled (no private key)${NC}"
+    if [[ "$FORCE_REBUILD" == true ]]; then
+        info "Force-rebuilding container image ($TAG)..."
+    else
+        info "Building container image ($TAG)${NO_CACHE:+, no-cache}..."
+    fi
+
+    BUILD_ARGS=(
+        --build-arg "CUDA_ARCH=$CUDA_ARCH"
+        -t "$TAG"
+        -f "$SCRIPT_DIR/Dockerfile"
+    )
+
+    if [[ -n "$NO_CACHE" ]]; then
+        BUILD_ARGS+=("$NO_CACHE")
+    fi
+
+    # Pass signing keys to the container (optional — enables signed updater artifacts)
+    if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+        BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY=$TAURI_SIGNING_PRIVATE_KEY")
+    fi
+    if [[ -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]]; then
+        BUILD_ARGS+=(--build-arg "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD")
+    fi
+
+    # We run the build from the project root so the full source is in context
+    # Use a .dockerignore to exclude unnecessary files
+    BUILD_CONTEXT="$PROJECT_ROOT"
+
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}  podman build${NC}"
+    echo -e "${BLUE}  Context:  $BUILD_CONTEXT${NC}"
+    echo -e "${BLUE}  Tag:      $TAG${NC}"
+    echo -e "${BLUE}  Arch:     $CUDA_ARCH${NC}"
+    if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+        echo -e "${BLUE}  Signing:  enabled${NC}"
+    else
+        echo -e "${YELLOW}  Signing:  disabled (no private key)${NC}"
+    fi
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    podman build "${BUILD_ARGS[@]}" "$BUILD_CONTEXT"
+
+    echo ""
+    ok "Container image built: $TAG"
 fi
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-
-podman build "${BUILD_ARGS[@]}" "$BUILD_CONTEXT"
-
-echo ""
-ok "Container image built: $TAG"
 
 # ── Extract built artifacts ───────────────────────────
 echo ""
