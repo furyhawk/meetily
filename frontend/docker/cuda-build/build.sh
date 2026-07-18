@@ -18,8 +18,10 @@
 #   ./frontend/docker/cuda-build/build.sh --signing-key "..."    # Enable signed updater artifacts
 #   ./frontend/docker/cuda-build/build.sh --help                 # Show help
 #
-# Signing keys can also be set via TAURI_SIGNING_PRIVATE_KEY and
-# TAURI_SIGNING_PRIVATE_KEY_PASSWORD environment variables.
+# Signing keys are automatically loaded from frontend/.env (or .env at
+# project root) if present. They can also be set explicitly via CLI args
+# (--signing-key, --signing-key-password) or environment variables
+# (TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD).
 #
 # Output:
 #   Built bundles (AppImage, .deb, etc.) are placed in ./dist/
@@ -34,7 +36,6 @@ CUDA_ARCH=""
 NO_CACHE=""
 PUSH=false
 TAG="meetily-cuda-builder:latest"
-# Read signing keys from environment (can be overridden by CLI args)
 TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY:-}"
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
 
@@ -49,6 +50,26 @@ info()  { echo -e "${BLUE}ℹ${NC} $*"; }
 ok()    { echo -e "${GREEN}✔${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $*"; }
 err()   { echo -e "${RED}✘${NC} $*" >&2; }
+
+# ── Load .env file if present ─────────────────────────
+# Looks for frontend/.env, then .env at project root.
+ENV_FILE=""
+for candidate in "$PROJECT_ROOT/frontend/.env" "$PROJECT_ROOT/.env"; do
+    if [[ -f "$candidate" ]]; then
+        ENV_FILE="$candidate"
+        break
+    fi
+done
+
+if [[ -n "$ENV_FILE" ]]; then
+    info "Loading environment from $ENV_FILE"
+    set -a
+    source "$ENV_FILE"
+    set +a
+    # Re-read after sourcing .env so env vars take effect
+    TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY:-}"
+    TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+fi
 
 # ── Help ──────────────────────────────────────────────
 usage() {
